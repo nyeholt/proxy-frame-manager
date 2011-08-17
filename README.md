@@ -1,4 +1,3 @@
-
 Requirements:
 
 * Porthole JS - http://ternarylabs.github.com/porthole/
@@ -59,3 +58,6 @@ is automatically created for us
 
 	// just send directly to the 'parent' of the frame
 	ProxyFrameManager.send('parent', 'parentMethod');
+	
+	
+A demonstration of this [can be found here](http://demo.mikenovember.com/proxy-frame/parent/)
