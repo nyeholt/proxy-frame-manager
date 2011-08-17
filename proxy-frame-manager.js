@@ -86,7 +86,7 @@
 						// first check the origin domain to make sure the
 						// caller was who we expected
 						if (frame.url.indexOf(messageEvent.origin) != 0) {
-							throw "Invalid source domain " + messageEvent.domain;
+							throw "Invalid source domain " + messageEvent.origin;
 						}
 
 						// now go through all listeners and send the message
