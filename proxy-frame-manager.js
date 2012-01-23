@@ -68,6 +68,8 @@
 	 */
 	window.ProxyFrameManager = (function () {
 		var frames = {};
+		var loadedFrames = {};
+		var deferred = {};
 		
 		/**
 		 * Receives inbound messages and routes them to appropriate handlers
@@ -86,7 +88,9 @@
 						// first check the origin domain to make sure the
 						// caller was who we expected
 						if (frame.url.indexOf(messageEvent.origin) != 0) {
-							throw "Invalid source domain " + messageEvent.origin;
+							if (console && console.log) {
+								console.log("Invalid source domain " + messageEvent.origin + ': expected ' + frame.url);
+							}
 						}
 
 						// now go through all listeners and send the message
@@ -118,12 +122,15 @@
 				// to use its data-proxy attribute for getting the proxy
 				// location
 				var elem = $('iframe[name=' + name + ']');
+				elem.load(function () {
+					deferredSend(name);
+				})
 				if ((elem && elem.length) || (name == 'parent' && proxyUrl)) {
 					var windowProxy = null;
 					if (proxyUrl) {
 						windowProxy = new Porthole.WindowProxy(proxyUrl);
 					} else {
-						var proxyUrl = elem.attr('data-proxy');
+						proxyUrl = elem.attr('data-proxy');
 						windowProxy = new Porthole.WindowProxy(proxyUrl, name);
 					}
 
@@ -161,12 +168,40 @@
 				frame.listeners.push(object);
 			}
 		}
+		
+		/**
+		 * Some 'send' requests are done before the framed page loads completely. This will
+		 * send those messages
+		 */
+		var deferredSend = function (frameName) {
+			loadedFrames[frameName] = true;
+			if (deferred[frameName]) {
+				for (var i in deferred[frameName]) {
+					var method = deferred[frameName][i].method;
+					var args = deferred[frameName][i].args;
+					args.unshift(method); args.unshift(frameName);
+					console.log("calling deferred send");
+					console.log(args);
+					send.apply(this, args);
+				}
+			}
+		}
 
 		/**
 		 * Send a method call down to a particular named frame
 		 */
 		var send = function (frameName, method) {
 			var args = Array.prototype.slice.call(arguments, 2);
+			if (!loadedFrames[frameName]) {
+				var list = deferred[frameName] != null ? deferred[frameName] : [];
+				list.push({
+					method: method,
+					args: args
+				});
+				deferred[frameName] = list;
+				return;
+			}
+
 			var frame = getFrame(frameName);
 			if (frame) {
 				// send data through the proxy, after first packaging things up
