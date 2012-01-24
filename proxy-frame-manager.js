@@ -68,7 +68,7 @@
 	 */
 	window.ProxyFrameManager = (function () {
 		var frames = {};
-		var loadedFrames = {};
+		var loadedFrames = {'parent': true};
 		var deferred = {};
 		
 		/**
