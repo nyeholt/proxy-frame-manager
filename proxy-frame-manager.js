@@ -71,6 +71,23 @@
 		var loadedFrames = {'parent': true};
 		var deferred = {};
 		
+		/** 
+		 * capture the load of all iframes
+		 */
+		$('iframe').load(function () {
+			log("Frame " + $(this).attr('name') + ' loaded');
+			if ($(this).attr('name')) {
+				deferredSend($(this).attr('name'));
+			}
+		})
+		
+		$(function () {
+			$('iframe.proxyFrame').each (function () {
+				var src = $(this).attr('data-src');
+				$(this).attr('src', src);
+			})
+		})
+		
 		/**
 		 * Receives inbound messages and routes them to appropriate handlers
 		 * 
@@ -88,9 +105,7 @@
 						// first check the origin domain to make sure the
 						// caller was who we expected
 						if (frame.url.indexOf(messageEvent.origin) != 0) {
-							if (console && console.log) {
-								console.log("Invalid source domain " + messageEvent.origin + ': expected ' + frame.url);
-							}
+							log("Invalid source domain " + messageEvent.origin + ': expected ' + frame.url);
 						}
 
 						// now go through all listeners and send the message
@@ -118,13 +133,18 @@
 		 */
 		var getFrame = function (name, proxyUrl) {
 			if (!frames[name]) {
+				var elem = $('iframe[name=' + name + ']');
+				
+				// we'll also just force through any deferred calls after a 
+				// couple of seconds in case the frame has loaded, but the
+				// load event hasn't triggered
+				setTimeout(function () {
+					deferredSend(name);
+				}, 10000);
+				
 				// see whether or not the frame exists. If so, we need
 				// to use its data-proxy attribute for getting the proxy
 				// location
-				var elem = $('iframe[name=' + name + ']');
-				elem.load(function () {
-					deferredSend(name);
-				})
 				if ((elem && elem.length) || (name == 'parent' && proxyUrl)) {
 					var windowProxy = null;
 					if (proxyUrl) {
@@ -168,21 +188,22 @@
 				frame.listeners.push(object);
 			}
 		}
-		
+
 		/**
 		 * Some 'send' requests are done before the framed page loads completely. This will
 		 * send those messages
 		 */
 		var deferredSend = function (frameName) {
-			loadedFrames[frameName] = true;
-			if (deferred[frameName]) {
-				for (var i in deferred[frameName]) {
-					var method = deferred[frameName][i].method;
-					var args = deferred[frameName][i].args;
-					args.unshift(method); args.unshift(frameName);
-					console.log("calling deferred send");
-					console.log(args);
-					send.apply(this, args);
+			if (!loadedFrames[frameName]) {
+				loadedFrames[frameName] = true;
+				if (deferred[frameName]) {
+					for (var i in deferred[frameName]) {
+						var method = deferred[frameName][i].method;
+						var args = deferred[frameName][i].args;
+						args.unshift(method); args.unshift(frameName);
+						log("Deferred send of " + method + " to " + frameName);
+						send.apply(this, args);
+					}
 				}
 			}
 		}
@@ -212,6 +233,12 @@
 
 				data = JSON.stringify(data);
 				frame.channel.postMessage(data);
+			}
+		}
+		
+		var log = function (message) {
+			if (typeof console != 'undefined' && console && console.log) {
+				console.log("ProxyFrameManager: " + message);
 			}
 		}
 		return {

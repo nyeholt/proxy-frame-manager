@@ -10,7 +10,7 @@ method calls between the two 'frames'.
 
 In your "parent" application page, you must have an IFrame configured as follows
 
-	<iframe name="FrameName" src="$ChildPageUrl" data-proxy="$ChildPageProxyUrl"></iframe>
+	<iframe name="FrameName" data-src="$ChildPageUrl" data-proxy="$ChildPageProxyUrl"></iframe>
 
 where
 
